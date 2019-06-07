@@ -1,0 +1,28 @@
+# Common
+Django==2.1.*
+psycopg2-binary==2.7.5
+djangorestframework==3.9.*
+djangorestframework-jwt==1.11.*
+django-filter==2.0.*
+celery==4.2.*
+django-allauth==0.38.*
+django-rest-auth==0.9.*
+envvars==0.3.*
+Pillow==5.3.*
+#Production
+gunicorn==19.9.*
+
+# Development
+django-debug-toolbar==1.9.1
+django-silk==3.0.1
+ipython
+django-extensions
+model_mommy
+
+# s3 storage
+boto3==1.9.*
+django-storages==1.7.*
+
+numpy
+matplotlib
+opencv-python

@@ -1,0 +1,78 @@
+version: "3"
+
+services:
+  django: &django
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/src
+    depends_on:
+      - postgres
+    # Для импорта sensitive-данных, н-р, ключа для Amazon
+    env_file: ./src/.env
+    environment:
+      # Используется в settings.__init__
+      DJANGO_ENVIROMENT_SETTINGS: docker_dev
+      # Используется в wait-for-postgres-start.sh
+      POSTGRES_USER: spotpet
+      POSTGRES_PASSWORD: spotpet
+      POSTGRES_DB: spotpet
+    command: /home/app/bin/docker/start-django-dev.sh
+
+  postgres:
+    image: kartoza/postgis:9.6-2.4
+    volumes:
+      - postgres-data:/var/lib/postgresql/data/
+      - postgres-conf:/etc/postgresql
+      - postgres-logs:/var/log/postgresql
+      - postgis-data:/var/lib/postgresql
+      # Какого-то хуя иногда нет в pg_hba.conf записи для доступа в БД из докер-контейнеров
+#      - ./etc/postgres/pg_hba.conf:/etc/postgresql/9.6/main/pg_hba.conf
+    environment:
+      POSTGRES_USER: spotpet
+      POSTGRES_PASSWORD: spotpet
+      POSTGRES_DB: spotpet
+      LC_ALL: C.UTF-8
+
+  rabbit:
+    image: rabbitmq:3.6
+    ports:
+      - "55672:55672"
+#      - "15672:15672"
+    volumes:
+      - ./config/rabbitmq/:/etc/rabbitmq/
+
+  redis:
+    image: "redis:alpine"
+
+  daphne:
+    <<: *django
+    command: ./home/app/bin/docker/start-daphne.sh
+
+  asgiworker:
+    <<: *django
+    command: ./home/app/bin/docker/start-django-asgi-worker.sh
+
+  celeryworker:
+    <<: *django
+    ports: []
+    depends_on:
+      - postgres
+      - rabbit
+    command: /home/app/bin/docker/start-celery-worker.sh
+
+  celerybeat:
+    <<: *django
+    ports: []
+    depends_on:
+      - celeryworker
+    command: /home/app/bin/docker/start-celery-beat.sh
+
+
+volumes:
+  postgres-data:
+  postgres-conf:
+  postgres-logs:
+  postgis-data:
+  redis-data:

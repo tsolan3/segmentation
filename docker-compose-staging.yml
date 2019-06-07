@@ -1,0 +1,78 @@
+version: "3"
+
+services:
+  django: &django
+    build: .
+    container_name: gn10
+    volumes:
+      - static-volume:/var/spot_pet/static/
+      - media-volume:/var/spot_pet/media/
+    depends_on:
+      - postgres
+      - redis
+    env_file: ./src/.env
+    command: /home/app/bin/docker/start-django-prod.sh
+
+  postgres:
+    image: postgres:9.6
+    container_name: ps10
+    volumes:
+      - postgres-data:/var/lib/postgresql/data/
+      - postgis-data:/var/lib/postgresql
+      - postgres-conf:/etc/postgresql
+      - postgres-logs:/var/log/postgresql
+    env_file: ./src/.env
+
+  nginx:
+    image: nginx
+    container_name: ng10
+    restart: always
+    depends_on:
+      - django
+    ports:
+      - "8010:80"
+    volumes:
+      - static-volume:/www/static/
+      - media-volume:/www/media/
+      - ./config/nginx/conf.d:/etc/nginx/conf.d
+
+  redis:
+    image: redis:alpine
+    container_name: rd10
+
+  daphne:
+    <<: *django
+    container_name: dp10
+    command: /home/app/bin/docker/start-daphne.sh
+
+  rabbit:
+    image: rabbitmq:3.6
+    container_name: rt10
+    volumes:
+      - ./config/rabbitmq/:/etc/rabbitmq/
+
+  celeryworker:
+    <<: *django
+    container_name: cw10
+    ports: []
+    depends_on:
+      - postgres
+      - rabbit
+    command: /home/app/bin/docker/start-celery-worker.sh
+
+  celerybeat:
+    <<: *django
+    container_name: cb10
+    ports: []
+    depends_on:
+      - celeryworker
+    command: /home/app/bin/docker/start-celery-beat.sh
+
+
+volumes:
+  postgres-data:
+  postgres-conf:
+  postgres-logs:
+  postgis-data:
+  static-volume:
+  media-volume:
